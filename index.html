@@ -5,9 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>星屑デリバリー | Hoshikuzu Delivery</title>
 <link rel="stylesheet" href="/src/style.css" />
+<script>
+window.__gameBooted = false;
+window.addEventListener('error', function (e) {
+  var box = document.getElementById('errbox');
+  if (box) { box.style.display = 'block'; box.textContent = '⚠ 読み込みエラー: ' + (e.message || '不明なエラー'); }
+}, true);
+window.addEventListener('unhandledrejection', function (e) {
+  var box = document.getElementById('errbox');
+  if (box) { box.style.display = 'block'; box.textContent = '⚠ 読み込みエラー: ' + (e.reason && e.reason.message ? e.reason.message : e.reason); }
+});
+setTimeout(function () {
+  if (!window.__gameBooted) {
+    var box = document.getElementById('errbox');
+    if (box && !box.textContent) { box.style.display = 'block'; box.textContent = '⚠ 3Dの初期化に失敗しました。お使いのブラウザがWebGL2に対応していない可能性があります。最新のSafari/Chromeで開いてみてください。'; }
+  }
+}, 8000);
+</script>
 </head>
 <body>
 <div id="app"></div>
+<div id="errbox" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;z-index:99;background:#7a1030;color:#fff;padding:12px 16px;border-radius:10px;font-size:14px;line-height:1.5;"></div>
 
 <div id="hud" class="hidden">
   <div class="hud-box">⭐ 星屑 <span id="count">0</span> / 8</div>

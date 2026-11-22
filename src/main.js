@@ -10,6 +10,7 @@ scene.fog = new THREE.Fog(0x4a3566, 55, 130);
 const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 400);
 camera.position.set(0, 18, 24);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+window.__gameBooted = true;
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
