@@ -13,3 +13,15 @@ html,body { width:100%; height:100%; overflow:hidden; background:#1b1633; font-f
 .hint { opacity:.9; font-size:15px !important; }
 button { pointer-events:auto; cursor:pointer; font-family:inherit; font-size:20px; font-weight:bold; color:#33200a; background:linear-gradient(#ffe3a1,#ffb84d); border:none; border-radius:999px; padding:14px 38px; box-shadow:0 4px 16px rgba(255,170,50,.5); }
 button:hover { transform:scale(1.05); }
+
+/* touch controls: hidden unless a coarse pointer (touch) device */
+#touch-controls { display:none; }
+@media (pointer:coarse) {
+  #touch-controls:not(.hidden) { display:flex; position:fixed; inset:auto 0 0 0; z-index:15; justify-content:space-between; align-items:flex-end; padding:0 18px 22px; pointer-events:none; }
+  #joystick { pointer-events:auto; touch-action:none; position:relative; width:124px; height:124px; border-radius:50%; background:rgba(20,14,48,.45); border:2px solid rgba(255,215,130,.7); }
+  #joystick-knob { position:absolute; left:50%; top:50%; width:54px; height:54px; margin:-27px 0 0 -27px; border-radius:50%; background:rgba(255,227,161,.9); box-shadow:0 2px 8px rgba(0,0,0,.4); }
+  .touch-buttons { display:flex; flex-direction:column; gap:12px; pointer-events:auto; }
+  .touch-buttons button { touch-action:none; font-size:16px; padding:14px 20px; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+  .touch-buttons button.active { filter:brightness(1.2); transform:scale(1.06); }
+  #controls-hint { display:none; }
+}

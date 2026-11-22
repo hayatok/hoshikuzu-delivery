@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const ISLAND_R = 29, TOTAL = 8, TIME_LIMIT = 120, HOVER_Y = 1.4;
+const GOAL = { x: 0, z: -22, r: 6 }; // 灯台の配達判定半径
 const app = document.getElementById('app');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x342a5e);
@@ -36,7 +37,7 @@ const beaconLight = new THREE.PointLight(0xffe27a, 60, 40); beaconLight.position
 
 const loader = new GLTFLoader();
 async function loadModel(name, fallback) {
-  try { const g = await loader.loadAsync(`/models/${name}.glb`); return g.scene; }
+  try { const g = await loader.loadAsync(`${import.meta.env.BASE_URL}models/${name}.glb`); return g.scene; }
   catch (e) { console.warn('model fallback', name, e); return fallback(); }
 }
 const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .85, ...o });
@@ -58,7 +59,7 @@ let droneVisual = null;
 async function buildWorld() {
   const island = await loadModel('island', fbIsland); scene.add(island);
   const lighthouse = await loadModel('lighthouse', fbSimple(new THREE.CylinderGeometry(1.6, 2.2, 9, 12), 0xffffff));
-  lighthouse.position.set(0, 1.0, -22); scene.add(lighthouse); colliders.push({ x: 0, z: -22, r: 3.2 });
+  lighthouse.position.set(GOAL.x, 1.0, GOAL.z); scene.add(lighthouse); colliders.push({ x: GOAL.x, z: GOAL.z, r: 3.2, goal: true });
   for (const [x, z] of TREES) { const t = await loadModel('tree', fbSimple(new THREE.ConeGeometry(1.6, 4.5, 8), 0x2e8b57)); t.position.set(x, 1.0, z); t.rotation.y = Math.random() * 6; scene.add(t); colliders.push({ x, z, r: 1.1 }); }
   for (const [x, z] of ROCKS) { const r = await loadModel('rock', fbSimple(new THREE.IcosahedronGeometry(1.3, 0), 0x8d8d99)); r.position.set(x, 1.0, z); r.rotation.set(Math.random(), Math.random(), Math.random()); scene.add(r); colliders.push({ x, z, r: 1.5 }); }
   for (const [x, z, ry] of HOUSES) { const h = await loadModel('house', fbSimple(new THREE.BoxGeometry(3.4, 2.6, 3), 0xffe6bd)); h.position.set(x, 1.0, z); h.rotation.y = ry; scene.add(h); colliders.push({ x, z, r: 2.6 }); }
@@ -75,6 +76,38 @@ const vel = new THREE.Vector3();
 const keys = {};
 addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space') e.preventDefault(); });
 addEventListener('keyup', e => keys[e.code] = false);
+
+// touch input (virtual joystick + buttons), merged with keyboard in animate()
+const touch = { x: 0, y: 0, dash: false, jump: false };
+{
+  const joy = document.getElementById('joystick'), knob = document.getElementById('joystick-knob');
+  let joyId = null;
+  const setJoy = e => {
+    const r = joy.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let dx = e.clientX - cx, dy = e.clientY - cy;
+    const max = r.width / 2 - 8, len = Math.hypot(dx, dy);
+    if (len > max) { dx *= max / len; dy *= max / len; }
+    touch.x = dx / max; touch.y = dy / max;
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  };
+  const resetJoy = () => { joyId = null; touch.x = 0; touch.y = 0; knob.style.transform = ''; };
+  joy.addEventListener('pointerdown', e => { joyId = e.pointerId; joy.setPointerCapture(joyId); setJoy(e); e.preventDefault(); });
+  joy.addEventListener('pointermove', e => { if (e.pointerId === joyId) setJoy(e); });
+  joy.addEventListener('pointerup', resetJoy);
+  joy.addEventListener('pointercancel', resetJoy);
+  const bindBtn = (id, prop) => {
+    const b = document.getElementById(id);
+    const on = e => { touch[prop] = true; b.classList.add('active'); e.preventDefault(); };
+    const off = () => { touch[prop] = false; b.classList.remove('active'); };
+    b.addEventListener('pointerdown', on);
+    b.addEventListener('pointerup', off);
+    b.addEventListener('pointercancel', off);
+    b.addEventListener('pointerleave', off);
+    b.addEventListener('contextmenu', e => e.preventDefault());
+  };
+  bindBtn('btn-dash', 'dash');
+  bindBtn('btn-jump', 'jump');
+}
 const $ = id => document.getElementById(id);
 function say(t, sec = 3) { $('message').textContent = t; msgTimer = sec; }
 function reset() {
@@ -86,10 +119,10 @@ function end(win) {
   state = win ? 'win' : 'lose';
   $('end-title').textContent = win ? '🎉 配達完了！' : '⏰ 時間切れ…';
   $('end-text').textContent = win ? `星屑を全部届けたよ！ 残り時間 ${Math.ceil(timeLeft)} 秒` : `集めた星屑は ${collected} / ${TOTAL} 個だったよ。もう一度挑戦しよう！`;
-  $('end-screen').classList.remove('hidden'); $('hud').classList.add('hidden');
+  $('end-screen').classList.remove('hidden'); $('hud').classList.add('hidden'); $('touch-controls').classList.add('hidden');
 }
-$('start-btn').onclick = () => { $('overlay').classList.add('hidden'); $('hud').classList.remove('hidden'); reset(); state = 'play'; say('星屑を8つ集めよう！', 4); };
-$('restart-btn').onclick = () => { $('end-screen').classList.add('hidden'); $('hud').classList.remove('hidden'); reset(); state = 'play'; say('もう一度！星屑を集めよう！', 3); };
+$('start-btn').onclick = () => { $('overlay').classList.add('hidden'); $('hud').classList.remove('hidden'); $('touch-controls').classList.remove('hidden'); reset(); state = 'play'; say('星屑を8つ集めよう！', 4); };
+$('restart-btn').onclick = () => { $('end-screen').classList.add('hidden'); $('hud').classList.remove('hidden'); $('touch-controls').classList.remove('hidden'); reset(); state = 'play'; say('もう一度！星屑を集めよう！', 3); };
 
 const clock = new THREE.Clock();
 const camTarget = new THREE.Vector3();
@@ -106,9 +139,13 @@ function animate() {
     $('timer').textContent = String(Math.ceil(timeLeft));
     if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) $('message').textContent = ''; }
 
-    const fwd = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
-    const side = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
-    const dash = (keys.ShiftLeft || keys.ShiftRight) ? 2 : 1;
+    let fwd = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
+    let side = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+    // merge touch joystick: x = right, y = down on screen
+    side += touch.x; fwd += -touch.y;
+    const mlen = Math.hypot(side, fwd);
+    if (mlen > 1) { side /= mlen; fwd /= mlen; }
+    const dash = (keys.ShiftLeft || keys.ShiftRight || touch.dash) ? 2 : 1;
     const speed = 11 * dash;
     vel.x = side * speed; vel.z = -fwd * speed;
     const prevX = player.position.x, prevZ = player.position.z;
@@ -117,11 +154,11 @@ function animate() {
     const d = Math.hypot(player.position.x, player.position.z);
     if (d > ISLAND_R) { player.position.x *= ISLAND_R / d; player.position.z *= ISLAND_R / d; }
     // collisions (radius)
-    for (const c of colliders) { const dd = Math.hypot(player.position.x - c.x, player.position.z - c.z); if (dd < c.r + 0.8) { player.position.x = prevX; player.position.z = prevZ; break; } }
+    for (const c of colliders) { if (c.goal && collected >= TOTAL) continue; const dd = Math.hypot(player.position.x - c.x, player.position.z - c.z); if (dd < c.r + 0.8) { player.position.x = prevX; player.position.z = prevZ; break; } }
     // face movement direction + tilt
     if (vel.lengthSq() > 0.1) { player.rotation.y = Math.atan2(vel.x, -vel.z) + Math.PI; player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, -side * 0.14, 0.2); player.rotation.x = THREE.MathUtils.lerp(player.rotation.x, fwd * 0.12, 0.2); }
     // hover jump
-    if ((keys.Space) && player.position.y <= HOVER_Y + 0.01) vy = 6.5;
+    if ((keys.Space || touch.jump) && player.position.y <= HOVER_Y + 0.01) vy = 6.5;
     vy -= 16 * dt; player.position.y += vy * dt;
     if (player.position.y < HOVER_Y) { player.position.y = HOVER_Y; vy = 0; }
     // collect
@@ -130,7 +167,7 @@ function animate() {
       say(collected >= TOTAL ? '全部集めた！灯台へ届けよう！💡' : `星屑ゲット！ あと ${TOTAL - collected} 個`, 3);
     }
     // goal
-    if (collected >= TOTAL && Math.hypot(player.position.x - 0, player.position.z - (-22)) < 4.2) end(true);
+    if (collected >= TOTAL && Math.hypot(player.position.x - GOAL.x, player.position.z - GOAL.z) < GOAL.r) end(true);
   }
   // smooth follow camera
   camTarget.set(player.position.x, player.position.y + 16, player.position.z + 21);

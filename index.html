@@ -19,7 +19,7 @@
 <div id="overlay">
   <h1>⭐ 星屑デリバリー ⭐</h1>
   <p>夕暮れの浮島に散らばった星屑（ほしくず）を 8つ 集めて、<br>制限時間内に灯台のビーコンへ届けよう！</p>
-  <p class="hint">WASD / 矢印キー：移動<br>Shift：ダッシュ　Space：ホバージャンプ</p>
+  <p class="hint">WASD / 矢印キー：移動<br>Shift：ダッシュ　Space：ホバージャンプ<br>スマホ・タブレット：画面左のスティックと右のボタンでも遊べます</p>
   <button id="start-btn">ゲームスタート</button>
 </div>
 
@@ -27,6 +27,14 @@
   <h1 id="end-title">🎉 配達完了！</h1>
   <p id="end-text"></p>
   <button id="restart-btn">もう一度遊ぶ</button>
+</div>
+
+<div id="touch-controls" class="hidden">
+  <div id="joystick"><div id="joystick-knob"></div></div>
+  <div class="touch-buttons">
+    <button id="btn-dash" type="button">ダッシュ</button>
+    <button id="btn-jump" type="button">ジャンプ</button>
+  </div>
 </div>
 
 <script type="module" src="/src/main.js"></script>
